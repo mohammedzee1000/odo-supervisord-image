@@ -1,37 +1,27 @@
 #!/bin/bash
 #set -e
 set -x
-artifacts="jar war ear"
-moved="false"
+# artifacts="jar war ear"
+# moved="false"
+target="${ODO_S2I_SRC_BIN_PATH}/src/target"
 
-echo "Looking for artifacts from previous builds to backup"
-for ext in $artifacts; do
-    pth="*.$ext"
-    if ls $pth; then
-        for file in `ls $pth`; do
-            mv $file $file.bak
-            moved="true"
-        done
-    fi
-done
+ls -lR ${ODO_S2I_SRC_BIN_PATH}/src
+
+if [[ -d $target ]]; then
+    echo "Found old artifacts, backing it up"
+    mv $target $target.bak
+fi
 
 # run normal assemble script
 if ${ODO_S2I_SCRIPTS_URL}/assemble; then
     exit 0
 else
     # If it failed, restore any previous artifacts and rebuild
-    if [[ $moved == "false" ]]; then
+    if [[ ! -d $target.bak ]]; then
         exit 1
     fi
-    echo "Restoring backed up artifacts and retriggering"
-    for ext in jar war ear; do
-        pth="*.$ext"
-        if ls $pth.bak; then
-            for file in `ls $pth.bak`; do
-                mv $file.bak $file
-            done
-        fi
-    done
+    echo "Restoring previous build"
+    mv $target.bak $target
     ${ODO_S2I_SCRIPTS_URL}/assemble
-    exit $?
+    exit 1
 fi
